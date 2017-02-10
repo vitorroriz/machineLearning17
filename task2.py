@@ -20,20 +20,15 @@ def sig(z):
 def derv(x,y,w):	
 	sum = np.zeros((len(x),1))
 
-#	print "sum shape:"
-#	print sum.shape
-
 	for i in range(len(y)):
-		yi = y[i]
-		xi = x[:,i]
+		yi = np.asarray(y[i])
+		xi = np.asarray(x[:,i])
 		z = zf(w,xi)
-#		print "sigma shape:"
 		sigma = sig(z)
-#		print sigma.shape
-#		print "xi shape:"
-#		print xi.shape
-		aux = np.dot((sigma - yi)[0],xi)
-		sum = sum + aux
+		aux = np.dot((sigma - yi)[0],xi)		
+		aux2 = aux.reshape(3,1)
+		sum = np.add(sum,aux2)
+
 	return sum
 
 def logistic_r(x,y,w,max_it, learning_n):
@@ -48,7 +43,19 @@ def logistic_r(x,y,w,max_it, learning_n):
 	
 	return w
 
-def classifier():
+def classifier(h):
+	
+	count = h.shape[1]	
+	c = np.zeros((1,h.shape[1]))
+	j = 0
+	for i in range(h.shape[1]):
+		if(h[0,j] >= 0.5):
+			c[0,j] = 1
+		else:
+			c[0,j] = 0
+		j = j+1;
+	return np.asarray(c)
+		
 
 def main():
 	
@@ -62,25 +69,16 @@ def main():
 	ap1 = np.ones(len(y))
 	x = np.column_stack((ap1,x)).T
 	w = np.zeros((1,x.shape[0])).T
-	
-	print x.shape
-	xi = x[:,0]
-	print xi.shape
-	print y.shape
-	print w.shape
-	print zf(w,x).shape
 
 
+	w2 = logistic_r(x,y,w,100,0.1)
+	h = zf(w2,x)
 
- 	w2 = logistic_r(x,y,w,10,0.5)
-
-	print "End:"
+	print "y:"
 	print y
-	print zf(w2,x)
+	print "c: "
+	c = classifier(h)
+	print c
 
-#	print w.shape
-#	print w2.shape
-#	print x.shape
-	#print zf(w2,x)
-
+	print np.subtract(y,c)
 main()
