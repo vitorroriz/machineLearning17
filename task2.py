@@ -1,5 +1,6 @@
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib
+import matplotlib.pyplot as plt
 from numpy import genfromtxt
 
 
@@ -64,21 +65,78 @@ def main():
 	train2 = genfromtxt(filename3, delimiter = ",")
 	test2  = genfromtxt(filename4, delimiter = ",")
 
-	x = train1[:,0:-1]
-	y = train1[:,-1]
+	x  = train1[:,0:-1]
+	x2 = test1[:,0:-1]
+	
+
+
+	y  = train1[:,-1]
+	y2 = test1[:,-1]
+
+
 	ap1 = np.ones(len(y))
-	x = np.column_stack((ap1,x)).T
+	ap2 = np.ones(len(y2))
+
+	x  = np.column_stack((ap1,x)).T
+	x2 = np.column_stack((ap2,x2)).T
+
 	w = np.zeros((1,x.shape[0])).T
 
 
-	w2 = logistic_r(x,y,w,100,0.1)
-	h = zf(w2,x)
+	w2 = logistic_r(x,y,w,1000,0.1)
+
+	print "x  shape " + str(x.shape)
+	print "x2 shape " + str(x2.shape)
+	print "w2 shape " + str(x2.shape)
+
+	h  = zf(w2,x)
+	h2 = zf(w2,x2)
+	
+	
+	
 
 	print "y:"
-	print y
+	print y2
 	print "c: "
-	c = classifier(h)
+	c = classifier(h2)
 	print c
 
-	print np.subtract(y,c)
+	print np.subtract(y2,c)
+
+	#plt.plot(x[1,:],x[2,:],'o')
+	print y
+
+	
+	plt.scatter(x[1,:],x[2,:], c = y, s = 15, edgecolor = 'blue')
+
+	plt.show()
+
+
 main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
