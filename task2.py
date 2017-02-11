@@ -50,13 +50,23 @@ def classifier(h):
 	c = np.zeros((1,h.shape[1]))
 	j = 0
 	for i in range(h.shape[1]):
-		if(h[0,j] >= 0.5):
+		if(h[0,j] >= 0):
 			c[0,j] = 1
 		else:
 			c[0,j] = 0
 		j = j+1;
 	return np.asarray(c)
-		
+
+def boundary(w,x):
+	teta0 = w[0,0]
+	teta1 = w[1,0]
+	teta2 = w[-1,0]	
+	bias = -teta0/teta2
+	slope = -teta1/teta2
+	bound_vec = np.array([bias,slope]).reshape(1,2)	
+	x_bline = x[0:2,:]
+	return np.dot(bound_vec,x_bline)
+
 
 def main():
 	
@@ -85,32 +95,18 @@ def main():
 
 	w2 = logistic_r(x,y,w,1000,0.1)
 
-	print "x  shape " + str(x.shape)
-	print "x2 shape " + str(x2.shape)
-	print "w2 shape " + str(x2.shape)
-
 	h  = zf(w2,x)
 	h2 = zf(w2,x2)
-	
-	
-	
-
-	print "y:"
+	c  = classifier(h2)
 	print y2
-	print "c: "
-	c = classifier(h2)
-	print c
+	print c                 
+	b_line = boundary(w2,x2)
 
-	print np.subtract(y2,c)
+	plt.scatter(x2[1,:],x2[2,:], c = c, s = 150, edgecolor = 'black')
 
-	#plt.plot(x[1,:],x[2,:],'o')
-	print y
-
-	
-	plt.scatter(x[1,:],x[2,:], c = y, s = 15, edgecolor = 'blue')
+	plt.plot(x2[1,:].reshape(40,1),b_line[0,:])
 
 	plt.show()
-
 
 main()
 
