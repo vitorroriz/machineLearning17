@@ -6,7 +6,7 @@ from numpy import genfromtxt
 
 filename1 = "cl-train-1.csv"
 filename2 = "cl-test-1.csv"
-filename3 = "cl-train-1.csv"
+filename3 = "cl-train-2.csv"
 filename4 = "cl-test-2.csv"
 
 def zf(w,x):
@@ -77,34 +77,48 @@ def main():
 
 	x  = train1[:,0:-1]
 	x2 = test1[:,0:-1]
-	
-
+	x3 = train2[:,0:-1]
+	x4 = test2[:,0:-1]
 
 	y  = train1[:,-1]
 	y2 = test1[:,-1]
-
+	y3 = train2[:,-1]
+	y4 = test2[:,-1]
 
 	ap1 = np.ones(len(y))
 	ap2 = np.ones(len(y2))
+	ap3 = np.ones(len(y3))
+	ap4 = np.ones(len(y4))
+
+
 
 	x  = np.column_stack((ap1,x)).T
 	x2 = np.column_stack((ap2,x2)).T
+	x3  = np.column_stack((ap3,x3)).T
+	x4  = np.column_stack((ap4,x4)).T
 
-	w = np.zeros((1,x.shape[0])).T
+	w  = np.zeros((1,x.shape[0])).T
+	w3 = np.zeros((1,x3.shape[0])).T
 
+#	w2 = logistic_r(x,y,w,1000,0.1)
+	w4 = logistic_r(x3,y3,w3,1000,0.1)
 
-	w2 = logistic_r(x,y,w,1000,0.1)
+#	h  = zf(w2,x)
+#	h2 = zf(w2,x2)
+	h3 = zf(w4,x3)
+	h4 = zf(w4,x4)
 
-	h  = zf(w2,x)
-	h2 = zf(w2,x2)
-	c  = classifier(h2)
-	print y2
-	print c                 
-	b_line = boundary(w2,x2)
+#	c  = classifier(h2)
+	c2 = classifier(h3)
 
-	plt.scatter(x2[1,:],x2[2,:], c = c, s = 150, edgecolor = 'black')
+	print y3
+	print c2        
 
-	plt.plot(x2[1,:].reshape(40,1),b_line[0,:])
+	b_line = boundary(w4,x3)
+
+	plt.scatter(x3[1,:],x3[2,:], c = y3, s = 50, edgecolor = 'black')
+
+	plt.plot(x3[1,:].reshape(60,1),b_line[0,:])
 
 	plt.show()
 
