@@ -79,9 +79,25 @@ def x_transform(x):
 	new_x = np.row_stack((x,x1_sqr,x2_sqr))
 	return new_x
 
-#def boundary_sqr(x,y,w):
-#	f = teta0 + teta1*(x1_i) + teta2*(x2_i) + teta3*(x1_i**2) + teta4*(x2_i**3)
+def boundary_sqr(xx1,xx2,w):
+	teta0 = w[0,0]
+	teta1 = w[1,0]
+	teta2 = w[2,0]	
+	teta3 = w[3,0]	
+	teta4 = w[4,0]	
+	N = xx1.shape[1]
+	f = np.zeros((N,N))
 
+	for i in range(N):
+		for j in range(N):
+			x1_i = xx1[i,j]
+			x2_i = xx2[i,j]
+			h = teta0 + teta1*(x1_i) + teta2*(x2_i) + teta3*(x1_i**2) + teta4*(x2_i**2)
+			if (h >= 0):
+				f[i,j] = 1
+			else:
+				f[i,j] = 0
+	return f
 
 
 def main():
@@ -117,10 +133,12 @@ def main():
 	w3 = np.zeros((1,x3.shape[0]+2)).T #inserting 2 extra features
 
 	new_x3 = x_transform(x3)
-
+	new_x4 = x_transform(x4)
 
 	print "X3 shape: " + str(x3.shape)
 	print "new_X3 shape: " + str(new_x3.shape)
+	print "X4 shape: " + str(x4.shape)
+	print "new_X4 shape: " + str(new_x4.shape)
 	
 #	w2 = logistic_r(x,y,w,1000,0.1)
 	w4 = logistic_r(new_x3,y3,w3,1000,0.1)
@@ -128,21 +146,31 @@ def main():
 #	h  = zf(w2,x)
 #	h2 = zf(w2,x2)
 	h3 = zf(w4,new_x3)
-#	h4 = zf(w4,x4)
+	h4 = zf(w4,new_x4)
 
 #	c  = classifier(h2)
 	c2 = classifier(h3)
-
-	print y3
-	print c2        
-
+	c3 = classifier(h4)
+      
+#	print boundary_sqr(x3,y3,w4)
 #	b_line = boundary(w4,x3)
+	x1list = np.linspace(0.0, 1.0, 500)
+	x2list = np.linspace(0.0, 1.0, 500)
+	xx1, xx2 = np.meshgrid(x1list,x2list)
+	print xx1.shape
+	print xx2.shape
+	F = boundary_sqr(xx1,xx2,w4)
+	F = F.reshape(xx1.shape)
 
-	#plt.scatter(x3[1,:],x3[2,:], c = y3, s = 50, edgecolor = 'black')
+	cp = plt.contour(xx1,xx2,F, colors = 'green', linestyles = 'dashed')
+#	plt.clabel(cp,inline = True, fontsize = 10)
+	plt.xlabel('x1')
+	plt.ylabel('x2')
+	plt.scatter(x4[1,:],x4[2,:], c = c3, s = 100, edgecolor = 'black')
 
 	#plt.plot(x3[1,:].reshape(60,1),b_line[0,:])
 
-	#plt.show()
+	plt.show()
 
 
 main()
