@@ -27,7 +27,7 @@ def derv(x,y,w):
 		z = zf(w,xi)
 		sigma = sig(z)
 		aux = np.dot((sigma - yi)[0],xi)		
-		aux2 = aux.reshape(3,1)
+		aux2 = aux.reshape(x.shape[0],1)
 		sum = np.add(sum,aux2)
 
 	return sum
@@ -67,6 +67,22 @@ def boundary(w,x):
 	x_bline = x[0:2,:]
 	return np.dot(bound_vec,x_bline)
 
+def x_transform(x):
+	N = x.shape[1]
+	x1_sqr = np.zeros((1,N))
+	x2_sqr = np.zeros((1,N))
+
+	for i in range(N):
+		x1_sqr[0,i] = x[1,i]**2
+		x2_sqr[0,i] = x[2,i]**2
+
+	new_x = np.row_stack((x,x1_sqr,x2_sqr))
+	return new_x
+
+#def boundary_sqr(x,y,w):
+#	f = teta0 + teta1*(x1_i) + teta2*(x2_i) + teta3*(x1_i**2) + teta4*(x2_i**3)
+
+
 
 def main():
 	
@@ -98,15 +114,21 @@ def main():
 	x4  = np.column_stack((ap4,x4)).T
 
 	w  = np.zeros((1,x.shape[0])).T
-	w3 = np.zeros((1,x3.shape[0])).T
+	w3 = np.zeros((1,x3.shape[0]+2)).T #inserting 2 extra features
 
+	new_x3 = x_transform(x3)
+
+
+	print "X3 shape: " + str(x3.shape)
+	print "new_X3 shape: " + str(new_x3.shape)
+	
 #	w2 = logistic_r(x,y,w,1000,0.1)
-	w4 = logistic_r(x3,y3,w3,1000,0.1)
+	w4 = logistic_r(new_x3,y3,w3,1000,0.1)
 
 #	h  = zf(w2,x)
 #	h2 = zf(w2,x2)
-	h3 = zf(w4,x3)
-	h4 = zf(w4,x4)
+	h3 = zf(w4,new_x3)
+#	h4 = zf(w4,x4)
 
 #	c  = classifier(h2)
 	c2 = classifier(h3)
@@ -114,13 +136,14 @@ def main():
 	print y3
 	print c2        
 
-	b_line = boundary(w4,x3)
+#	b_line = boundary(w4,x3)
 
-	plt.scatter(x3[1,:],x3[2,:], c = y3, s = 50, edgecolor = 'black')
+	#plt.scatter(x3[1,:],x3[2,:], c = y3, s = 50, edgecolor = 'black')
 
-	plt.plot(x3[1,:].reshape(60,1),b_line[0,:])
+	#plt.plot(x3[1,:].reshape(60,1),b_line[0,:])
 
-	plt.show()
+	#plt.show()
+
 
 main()
 
