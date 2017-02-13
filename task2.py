@@ -1,13 +1,11 @@
+# ==== Library imports ====================================================================
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from numpy import genfromtxt
+import matplotlib.lines as mlines
 
-
-filename1 = "cl-train-1.csv"
-filename2 = "cl-test-1.csv"
-filename3 = "cl-train-2.csv"
-filename4 = "cl-test-2.csv"
+# ==== Function Definitions ===============================================================
 
 #Implementation of z = h(x) = wT * x
 def zf(w,x):
@@ -33,12 +31,13 @@ def derv(x,y,w):
 	return sum
 
 #Implementation of the logistic regression based in the auxiliar functions above
-def logistic_r(x,y,w,max_it, learning_n):
-	erro = np.zeros((1,max_it))
+def logistic_r(x,y, x_test, y_test, w,max_it, learning_n):
+	erro = np.zeros((2,max_it))
 	deriv = derv(x,y,w)
 	i = 0;
 	while((i < max_it)):
 		erro[0,i] = cross_entropy(x,y,w)
+		erro[1,i] = cross_entropy(x_test, y_test, w)
 		i = i+1;
 		deriv = derv(x,y,w)
 		w = w - np.dot(learning_n,deriv)
@@ -112,6 +111,58 @@ def cross_entropy(x,y,w):
 		sum = sum + aux
 	return sum
 
+
+# ==== Global Scope ========================================================================
+
+#Defining file paths for datasets
+filename1 = "cl-train-1.csv"
+filename2 = "cl-test-1.csv"
+filename3 = "cl-train-2.csv"
+filename4 = "cl-test-2.csv"
+
+# "defining" # of iterations
+iterations_n = 1000
+
+#Loading data from the training and test sets
+train1 = genfromtxt(filename1, delimiter = ",")
+test1  = genfromtxt(filename2, delimiter = ",")
+train2 = genfromtxt(filename3, delimiter = ",")
+test2  = genfromtxt(filename4, delimiter = ",")
+
+#Separating the vectors x = (x1,x2) for each dataset (training and test)
+x  = train1[:,0:-1]
+x2 = test1[:,0:-1]
+x3 = train2[:,0:-1]
+x4 = test2[:,0:-1]
+
+#Separating the vectors y (expected classification) for each dataset (training and test)
+y  = train1[:,-1]
+y2 = test1[:,-1]
+y3 = train2[:,-1]
+y4 = test2[:,-1]
+
+#Defining the appends to be added to the x vectors
+ap1 = np.ones(len(y))
+ap2 = np.ones(len(y2))
+ap3 = np.ones(len(y3))
+ap4 = np.ones(len(y4))
+
+#Appending the '1' values to the x vectors
+x  = np.column_stack((ap1,x)).T
+x2 = np.column_stack((ap2,x2)).T
+x3  = np.column_stack((ap3,x3)).T
+x4  = np.column_stack((ap4,x4)).T
+
+#Setting initial weight vectors (in this case, all 0)
+w  = np.zeros((1,x.shape[0])).T
+w3 = np.zeros((1,x3.shape[0]+2)).T #inserting 2 extra features for nonlinear case
+
+#Nonlinear transformation for the nonlinear case
+new_x3 = x_transform(x3)
+new_x4 = x_transform(x4)
+
+# ==== Main Branch ===============================================================
+
 def main():
 	# "defining" # of iterations
 	iterations_n = 1000
@@ -154,43 +205,69 @@ def main():
 	new_x3 = x_transform(x3)
 	new_x4 = x_transform(x4)
 	
-	#New weights for the linear case (max iteratin = 1000, learning-rate = 0.1)
-	w2, erro1 = logistic_r(x,y,w,iterations_n,0.1)
-	#New weights for the nonlinear case (max iteratin = 1000, learning-rate = 0.1)
-	w4, erro2 = logistic_r(new_x3,y3,w3,iterations_n,0.1)
+	#New weights for the linear case (max iteration = 1000, learning-rate = 0.1)
+	w2, erro1 = logistic_r(x,y,x2,y2,w,iterations_n,0.1)
+	#New weights for the nonlinear case (max iteration = 1000, learning-rate = 0.1)
+	w4, erro2 = logistic_r(new_x3,y3,new_x4,y4,w3,iterations_n,0.1)
 
 
-	h  = zf(w2,x)
-	h2 = zf(w2,x2)
-	h3 = zf(w4,new_x3)
-	h4 = zf(w4,new_x4)
+#	h  = zf(w2,x)
+#	h2 = zf(w2,x2)
+#	h3 = zf(w4,new_x3)
+#	h4 = zf(w4,new_x4)
 
-	c  = classifier(h2)
-	c3 = classifier(h4)
-      
-#	print boundary_sqr(x3,y3,w4)
-#	b_line = boundary(w4,x3)
+#	c  = classifier(h)
+#	c2 = classifier(h2)
+#	c3 = classifier(h3)
+#	c4 = classifier(h4)
+
+#Plot of linear case (dataset 1)
+	plt.figure(1)
 	x1list = np.linspace(0.0, 1.0, iterations_n)
-	x2list = np.linspace(0.0, 1.0, iterations_n)
-	xx1, xx2 = np.meshgrid(x1list,x2list)
-	print xx1.shape
-	print xx2.shape
-	F = boundary_sqr(xx1,xx2,w4)
-	F = F.reshape(xx1.shape)
 
-	cp = plt.contour(xx1,xx2,F, colors = 'green', linestyles = 'dashed')
-#	plt.clabel(cp,inline = True, fontsize = 10)
+	x1_append = np.ones((1, iterations_n))
+	x1list_aux = np.array([x1list])
+	x1list_vec = np.row_stack((x1_append,x1list_aux))
+
+	b_line = boundary(w2, x1list_vec)	
+	plt.scatter(x[1,:],x[2,:], c = y, s = 100, edgecolor = 'black', marker = 'o')
+	plt.scatter(x2[1,:],x2[2,:], c = y2, s = 100, edgecolor = 'black', marker = '*')
+	plt.plot(x1list,b_line[0,:])
 	plt.xlabel('x1')
 	plt.ylabel('x2')
-	plt.scatter(x4[1,:],x4[2,:], c = c3, s = 100, edgecolor = 'black')
 
-	#plt.plot(x3[1,:].reshape(60,1),b_line[0,:])
-	aux_x = np.linspace(1,iterations_n, iterations_n)
+
+#Plot of linear case (dataset 2)
 	plt.figure(2)
+#Creating meshgrid to plot the nonlinear decision boundary (second part of task2)
+	x2list = x1list
+	xx1, xx2 = np.meshgrid(x1list,x2list)
+#Evaluating the decision boundary function in all the meshgrid points so we can plot it
+	F = boundary_sqr(xx1,xx2,w4)
+	F = F.reshape(xx1.shape)
+#Plot of the nonlinear decision boundary
+	cp = plt.contour(xx1,xx2,F, colors = 'green', linestyles = 'dashed')
+	plt.xlabel('x1')
+	plt.ylabel('x2')
 
-	print aux_x.shape
-	print erro2.shape
-	plt.plot(aux_x, erro2[0,:])
+#Plot of the classified points
+	plt.scatter(x3[1,:],x3[2,:], c = y3, s = 100, edgecolor = 'black', marker = 'o')
+	plt.scatter(x4[1,:],x4[2,:], c = y4, s = 100, edgecolor = 'black', marker = '*')
+
+#=================================================================
+# PLOT OF ERROR model
+	aux_x = np.linspace(1,iterations_n, iterations_n)
+	plt.figure(3)
+	plt.plot(aux_x, erro1[0,:], c = 'green')
+	plt.plot(aux_x, erro1[1,:], c = 'black')
+	plt.xlabel('# of iteration')
+	plt.ylabel('Cross-entropy error')
+
+	plt.figure(4)
+	plt.plot(aux_x, erro2[0,:], c = 'green')
+	plt.plot(aux_x, erro2[1,:], c = 'black')
+	plt.xlabel('# of iteration')
+	plt.ylabel('Cross-entropy error')
 
 	plt.show()
 
