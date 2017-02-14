@@ -223,22 +223,31 @@ def main():
 
 #Plot of linear case (dataset 1)
 	plt.figure(1)
-	x1list = np.linspace(0.0, 1.0, iterations_n)
 
+	x1list = np.linspace(0.0, 1.0, iterations_n)
 	x1_append = np.ones((1, iterations_n))
 	x1list_aux = np.array([x1list])
 	x1list_vec = np.row_stack((x1_append,x1list_aux))
 
 	b_line = boundary(w2, x1list_vec)	
-	plt.scatter(x[1,:],x[2,:], c = y, s = 100, edgecolor = 'black', marker = 'o')
-	plt.scatter(x2[1,:],x2[2,:], c = y2, s = 100, edgecolor = 'black', marker = '*')
-	plt.plot(x1list,b_line[0,:])
+	plt.scatter(x[1,:],x[2,:], c = y, s = 100, edgecolor = 'black', marker = 'o', label = 'Training')
+
+	plt.scatter(x2[1,:],x2[2,:], c = y2, s = 150, edgecolor = 'black', marker = '*', label = 'Test')
+	plt.plot(x1list,b_line[0,:], label = 'Decision boundary')
 	plt.xlabel('x1')
 	plt.ylabel('x2')
+
+	l1_1 = mlines.Line2D([], [], color='blue', marker='o', markersize=15, label='Training (y = 0)' )
+	l1_2 = mlines.Line2D([], [], color='red', marker='o', markersize=15, label='Training (y = 1)')
+	l1_3 = mlines.Line2D([], [], color='blue', marker='*', markersize=15, label='Test (y = 0)')
+	l1_4 = mlines.Line2D([], [], color='red', marker='*', markersize=15, label='Test (y = 1)')
+	plt.legend([l1_1,l1_2,l1_3,l1_4],['Training (y = 0)','Training (y = 1)','Test (y = 0)','Test (y = 1)'], loc=3, scatterpoints = 1)
+	
 
 
 #Plot of linear case (dataset 2)
 	plt.figure(2)
+
 #Creating meshgrid to plot the nonlinear decision boundary (second part of task2)
 	x2list = x1list
 	xx1, xx2 = np.meshgrid(x1list,x2list)
@@ -252,22 +261,29 @@ def main():
 
 #Plot of the classified points
 	plt.scatter(x3[1,:],x3[2,:], c = y3, s = 100, edgecolor = 'black', marker = 'o')
-	plt.scatter(x4[1,:],x4[2,:], c = y4, s = 100, edgecolor = 'black', marker = '*')
+	plt.scatter(x4[1,:],x4[2,:], c = y4, s = 150, edgecolor = 'black', marker = '*')
 
+	l1_1 = mlines.Line2D([], [], color='blue', marker='o', markersize=15, label='Training (y = 0)')
+	l1_2 = mlines.Line2D([], [], color='red', marker='o', markersize=15, label='Training (y = 1)')
+	l1_3 = mlines.Line2D([], [], color='blue', marker='*', markersize=15, label='Test (y = 0)')
+	l1_4 = mlines.Line2D([], [], color='red', marker='*', markersize=15, label='Test (y = 1)')
+	plt.legend([l1_1,l1_2,l1_3,l1_4],['Training (y = 0)','Training (y = 1)','Test (y = 0)','Test (y = 1)'], loc = 3,scatterpoints = 1)
 #=================================================================
 # PLOT OF ERROR model
 	aux_x = np.linspace(1,iterations_n, iterations_n)
 	plt.figure(3)
-	plt.plot(aux_x, erro1[0,:], c = 'green')
-	plt.plot(aux_x, erro1[1,:], c = 'black')
+	plt.plot(aux_x, erro1[0,:], c = 'green', label = "Training set")
+	plt.plot(aux_x, erro1[1,:], c = 'black', label = "Test set")
 	plt.xlabel('# of iteration')
 	plt.ylabel('Cross-entropy error')
+	plt.legend(loc = 3)
 
 	plt.figure(4)
-	plt.plot(aux_x, erro2[0,:], c = 'green')
-	plt.plot(aux_x, erro2[1,:], c = 'black')
+	plt.plot(aux_x, erro2[0,:], c = 'green', label = 'Training set')
+	plt.plot(aux_x, erro2[1,:], c = 'black', label = 'Test set')
 	plt.xlabel('# of iteration')
 	plt.ylabel('Cross-entropy error')
+	plt.legend(loc = 3)
 
 	plt.show()
 
