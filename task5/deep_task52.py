@@ -12,14 +12,15 @@ import os
 
 TRAIN_RATE = 0.8
 NUMBER_OF_CLASSES = 26
-STARTING_LEARNING_RATE = 0.03
-NUMBER_OF_EPOCHS = 10
-BATCH_SIZE = 4
+STARTING_LEARNING_RATE = 0.01
+NUMBER_OF_EPOCHS = 200
+BATCH_SIZE = 64
 data_path = './chars74k-lite/'
 path_letters_src = {}
 path_letters_src[0] = './chars74k-lite/a/a_0.jpg'
 data_info = {}
 DATA_TOTAL_SIZE = 0
+DATA_TOTAL_SIZE_TEST = 0
 
 global_step = tf.Variable(0, trainable=False)
 learning_rate = tf.train.exponential_decay(STARTING_LEARNING_RATE, global_step, NUMBER_OF_EPOCHS, 0.96, staircase=True)
@@ -43,14 +44,21 @@ for i in next(os.walk(data_path))[1]:
   new_path = data_path + i
   data_info[j] = (i,len(next(os.walk(new_path))[2]))
   DATA_TOTAL_SIZE = DATA_TOTAL_SIZE +  int(data_info[j][1]*TRAIN_RATE)
+  DATA_TOTAL_SIZE_TEST = DATA_TOTAL_SIZE_TEST + data_info[j][1]
   j=j+1
 
+DATA_TOTAL_SIZE_TEST = DATA_TOTAL_SIZE_TEST - DATA_TOTAL_SIZE
+
 filelist = []
+filelist_test = []
 
 Y_labels = np.zeros((DATA_TOTAL_SIZE, NUMBER_OF_CLASSES))
+Y_labels_test = np.zeros((DATA_TOTAL_SIZE_TEST, NUMBER_OF_CLASSES))
+
 
 print Y_labels.shape 
 index = 0
+index_test = 0
 for dir_letter in range(NUMBER_OF_CLASSES):
 	for image_index in range(int(data_info[dir_letter][1]*TRAIN_RATE)):
 		i_path = data_path+data_info[dir_letter][0]+'/'+data_info[dir_letter][0]+'_'+str(image_index)+'.jpg'
@@ -60,46 +68,79 @@ for dir_letter in range(NUMBER_OF_CLASSES):
 		index = index + 1
 
 
+	for image_index in range(int(data_info[dir_letter][1]*TRAIN_RATE),data_info[dir_letter][1]):
+		i_path = data_path+data_info[dir_letter][0]+'/'+data_info[dir_letter][0]+'_'+str(image_index)+'.jpg'
+		filelist_test.append(i_path)
+		Y_labels_test[index_test][dir_letter] = 1.0	
+		index_test = index_test + 1
+
+
+print "DATA:"
+print 'Training set size: ' +str(DATA_TOTAL_SIZE)
+print 'Test set size:     ' +str(DATA_TOTAL_SIZE_TEST)
+print 'Total data size:  ' +str(DATA_TOTAL_SIZE_TEST + DATA_TOTAL_SIZE)
+
 X_train  = np.array([np.array(Image.open(fname)) for fname in filelist])
 X_train  = np.reshape(X_train,(DATA_TOTAL_SIZE, 20, 20, 1))
-X_train = X_train/255.0
+X_train  = X_train/255.0
 
+X_test  = np.array([np.array(Image.open(fname)) for fname in filelist_test])
+X_test  = np.reshape(X_test,(DATA_TOTAL_SIZE_TEST, 20, 20, 1))
+X_test  = X_test/255.0
+
+
+
+CH_L1 = 4
+CH_L2 = 8
+CH_L3 = 12
+
+
+
+#NEURAL NETWORKS START HERE
 X = tf.placeholder(tf.float32, [None, 20, 20, 1])
+#placeholder for percentage of neurons that are not dropout in each layer during training (should be feed 1.0 for test)
+pkeep = tf.placeholder(tf.float32)
+
+
 
 #W1 = tf.Variable(tf.random_normal(shape=[20*20,NUMBER_OF_CLASSES], stddev = 1.0/20*20))
-W1 = tf.Variable(tf.truncated_normal([5,5,1,4], stddev = 0.1))
-B1 = tf.Variable(tf.zeros([4])) #4 is the number of output channels
+W1 = tf.Variable(tf.truncated_normal([5,5,1,CH_L1], stddev = 0.1))
+B1 = tf.Variable(tf.zeros([CH_L1])) #4 is the number of output channels
 stride1 = 1 #output is still 20x20
 Ycnv1 = tf.nn.conv2d(X,W1, strides = [1, stride1, stride1, 1], padding = 'SAME')
 Y1 = tf.nn.relu(Ycnv1 + B1)
+Y1d = tf.nn.dropout(Y1, pkeep)
 
-W2 = tf.Variable(tf.truncated_normal([4,4,4,8], stddev = 0.1))
-B2 = tf.Variable(tf.zeros([8])) #4 is the number of output channels
-stride2 = 1 #output is 10x10
-Ycnv2 = tf.nn.conv2d(Y1,W2, strides = [1, stride2, stride2, 1], padding = 'SAME')
+W2 = tf.Variable(tf.truncated_normal([4,4,CH_L1,CH_L2], stddev = 0.1))
+B2 = tf.Variable(tf.zeros([CH_L2])) #4 is the number of output channels
+stride2 = 2 #output is 10x10
+Ycnv2 = tf.nn.conv2d(Y1d,W2, strides = [1, stride2, stride2, 1], padding = 'SAME')
 Y2 = tf.nn.relu(Ycnv2 + B2)
+Y2d = tf.nn.dropout(Y2, pkeep)
 
 
-W3 = tf.Variable(tf.truncated_normal([4,4,8,12], stddev = 0.1))
-B3 = tf.Variable(tf.zeros([12])) #4 is the number of output channels
-stride3 = 1 #output is 5x5
-Ycnv3 = tf.nn.conv2d(Y2,W3, strides = [1, stride3, stride3, 1], padding = 'SAME')
+W3 = tf.Variable(tf.truncated_normal([4,4,CH_L2,CH_L3], stddev = 0.1))
+B3 = tf.Variable(tf.zeros([CH_L3])) #4 is the number of output channels
+stride3 = 2 #output is 5x5
+Ycnv3 = tf.nn.conv2d(Y2d,W3, strides = [1, stride3, stride3, 1], padding = 'SAME')
 Y3 = tf.nn.relu(Ycnv3 + B3)
+Y3d = tf.nn.dropout(Y3, pkeep)
 
-
-W4 = tf.Variable(tf.truncated_normal([20*20*12, 200], stddev = 0.1))
+W4 = tf.Variable(tf.truncated_normal([5*5*CH_L3, 200], stddev = 0.1))
 B4 = tf.Variable(tf.zeros([200]))
 
 W5 = tf.Variable(tf.truncated_normal([200 ,NUMBER_OF_CLASSES],stddev = 0.1))
 B5 = tf.Variable(tf.zeros([NUMBER_OF_CLASSES])) 
 
+h1 = tf.nn.relu(tf.matmul(tf.reshape(Y3d,[-1,5*5*CH_L3]), W4) + B4)
+h1d = tf.nn.dropout(h1, pkeep)
 
-
-#model
-h1 = tf.nn.relu(tf.matmul(tf.reshape(Y3,[-1,20*20*12]), W4) + B4)
-
-Ylogits = tf.matmul(h1, W5) + B5
+Ylogits = tf.matmul(h1d, W5) + B5
 Y  = tf.nn.softmax(Ylogits)
+
+
+
+
 
 #placeholder for labels of the classes
 Y_hat = tf.placeholder(tf.float32,[None,NUMBER_OF_CLASSES])
@@ -123,22 +164,36 @@ sess.run(init)
 
 
 x_batch, y_batch = create_batchs(X_train, Y_labels, BATCH_SIZE)
+x_batch_test, y_batch_test = create_batchs(X_test, Y_labels_test, BATCH_SIZE)
 
 print "x batch"
 print x_batch.shape	
 NUMBER_OF_BATCHS = x_batch.shape[0]
 print NUMBER_OF_BATCHS
 
+
+print "x batch test"
+print x_batch_test.shape	
+NUMBER_OF_BATCHS_TEST = x_batch_test.shape[0]
+print NUMBER_OF_BATCHS_TEST
+
 ix = np.random.permutation(NUMBER_OF_BATCHS)
 
 
 np.set_printoptions(precision=3)
 
+
+test_data = {X : X_test, Y_hat : Y_labels_test, pkeep : 1.0}
+my_error = {}
+my_error_test = {}
+my_acc = {}
+my_acc_test = {}
+
 for i in range(NUMBER_OF_EPOCHS):
 #	load batch of images and labels
 
 	for k in ix:
-		train_data = {X : x_batch[k], Y_hat : y_batch[k]}
+		train_data = {X : x_batch[k], Y_hat : y_batch[k], pkeep : 0.9}
 		sess.run(train_step, feed_dict = train_data)
 	
 #	j = i%NUMBER_OF_BATCHS
@@ -148,21 +203,76 @@ for i in range(NUMBER_OF_EPOCHS):
 
 #train
 #	sess.run(train_step, feed_dict = train_data)
-		prediction = sess.run(Y , feed_dict = train_data)
+#		prediction = sess.run(Y , feed_dict = train_data, pkeep = 0.75)
 
-		if k%100 == 0:
-		 	a,c = sess.run([accuracy,cross_entropy], feed_dict = train_data)
-		 	print "Accuracy : "
-		 	print a
-		 	print "Cross entropy:"
-		 	print c
-		 	print ' --------------- Y label -------------------------'
-		 	print y_batch[k]
-		 	print ' --------------- Y prediction --------------------'
-		 	print prediction
+#if k%100 == 0:
+	print '-----------------------'
+	print "EPOCH " + str(i)
+ 	a,c     = sess.run([accuracy,cross_entropy], feed_dict = {X : x_batch[k], Y_hat : y_batch[k], pkeep : 1.0})
+ 	a_t,c_t = sess.run([accuracy,cross_entropy], feed_dict = test_data)
+
+ 	my_error[i] = c
+	my_error_test[i] = c_t
+	my_acc[i] = a
+	my_acc_test[i] = a_t
+
+	print "TRAINING Accuracy : "
+	print a
+ 	print "TRAINING loss:"
+ 	print c
+ 	print ''
+ 	print "TEST Accuracy : "
+ 	print a_t
+ 	print "TEST loss"
+ 	print c_t
+
+#		 	print ' --------------- Y label -------------------------'
+#		 	print y_batch[k]
+#		 	print ' --------------- Y prediction --------------------'
+#		 	print prediction
+
+
+print "Saving model..."
+saver = tf.train.Saver()
+saver.save(sess,"my_model")
+print "Model saved!"
+
+
+my_error_list = sorted(my_error.items())
+my_error_test_list = sorted(my_error_test.items())
+e_x, e_y = zip(*my_error_list)
+e_x_t, e_y_t = zip(*my_error_test_list)
+plt.plot(e_x, e_y, color = 'blue') 
+plt.plot(e_x_t, e_y_t, color = 'red')  
+l1_1 = mlines.Line2D([], [], color='blue')
+l1_2 = mlines.Line2D([], [], color='red')  
+plt.legend([l1_1,l1_2],['Training','Test'], loc = 3)
+plt.xlabel('Epoch')
+plt.ylabel('Error')
+title_fig1 = 'Initial learning rate = ' + str(STARTING_LEARNING_RATE)
+plt.title(title_fig1)
+#plt.legend([l1_1, l1_2], ['Training','Test'])
+
+plt.figure(2)
+
+my_acc_list = sorted(my_acc.items())
+my_acc_test_list = sorted(my_acc_test.items())
+a_x, a_y = zip(*my_acc_list)
+a_x_t, a_y_t = zip(*my_acc_test_list)
+plt.plot(a_x, a_y, color = 'blue') 
+plt.plot(a_x_t, a_y_t, color = 'red')  
+l2_1 = mlines.Line2D([], [], color='blue')
+l2_2 = mlines.Line2D([], [], color='red')  
+plt.legend([l2_1,l2_2],['Training','Test'], loc = 3)
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+title_fig2 = 'Initial learning rate = ' + str(STARTING_LEARNING_RATE)
+plt.title(title_fig2)
 
 
 
+
+plt.show()
 
 
 
