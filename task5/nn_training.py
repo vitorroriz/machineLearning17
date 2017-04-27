@@ -13,7 +13,7 @@ import os
 TRAIN_RATE = 0.8
 NUMBER_OF_CLASSES = 26
 STARTING_LEARNING_RATE = 0.01
-NUMBER_OF_EPOCHS = 200
+NUMBER_OF_EPOCHS = 150
 BATCH_SIZE = 64
 data_path = './chars74k-lite/'
 path_letters_src = {}
@@ -21,6 +21,8 @@ path_letters_src[0] = './chars74k-lite/a/a_0.jpg'
 data_info = {}
 DATA_TOTAL_SIZE = 0
 DATA_TOTAL_SIZE_TEST = 0
+
+TRAIN_OR_NOT = 0
 
 global_step = tf.Variable(0, trainable=False)
 learning_rate = tf.train.exponential_decay(STARTING_LEARNING_RATE, global_step, NUMBER_OF_EPOCHS, 0.96, staircase=True)
@@ -90,47 +92,48 @@ X_test  = X_test/255.0
 
 
 
-CH_L1 = 4
-CH_L2 = 8
-CH_L3 = 12
-
-
 
 #NEURAL NETWORKS START HERE
 X = tf.placeholder(tf.float32, [None, 20, 20, 1])
 #placeholder for percentage of neurons that are not dropout in each layer during training (should be feed 1.0 for test)
 pkeep = tf.placeholder(tf.float32)
 
+CH_L1 = 4
+CH_L2 = 8
+CH_L3 = 12
 
+PATCH1 = 5
+PATCH2 = 4
+PATCH3 = 4
 
 #W1 = tf.Variable(tf.random_normal(shape=[20*20,NUMBER_OF_CLASSES], stddev = 1.0/20*20))
-W1 = tf.Variable(tf.truncated_normal([5,5,1,CH_L1], stddev = 0.1))
-B1 = tf.Variable(tf.zeros([CH_L1])) #4 is the number of output channels
+W1 = tf.Variable(tf.truncated_normal([PATCH1,PATCH1,1,CH_L1], stddev = 0.1), name = 'W1')
+B1 = tf.Variable(tf.zeros([CH_L1]), name = 'B1') #4 is the number of output channels
 stride1 = 1 #output is still 20x20
 Ycnv1 = tf.nn.conv2d(X,W1, strides = [1, stride1, stride1, 1], padding = 'SAME')
 Y1 = tf.nn.relu(Ycnv1 + B1)
 Y1d = tf.nn.dropout(Y1, pkeep)
 
-W2 = tf.Variable(tf.truncated_normal([4,4,CH_L1,CH_L2], stddev = 0.1))
-B2 = tf.Variable(tf.zeros([CH_L2])) #4 is the number of output channels
+W2 = tf.Variable(tf.truncated_normal([PATCH2,PATCH2,CH_L1,CH_L2], stddev = 0.1), name = 'W2')
+B2 = tf.Variable(tf.zeros([CH_L2]), name = 'B2') #4 is the number of output channels
 stride2 = 2 #output is 10x10
 Ycnv2 = tf.nn.conv2d(Y1d,W2, strides = [1, stride2, stride2, 1], padding = 'SAME')
 Y2 = tf.nn.relu(Ycnv2 + B2)
 Y2d = tf.nn.dropout(Y2, pkeep)
 
 
-W3 = tf.Variable(tf.truncated_normal([4,4,CH_L2,CH_L3], stddev = 0.1))
-B3 = tf.Variable(tf.zeros([CH_L3])) #4 is the number of output channels
+W3 = tf.Variable(tf.truncated_normal([PATCH3,PATCH3,CH_L2,CH_L3], stddev = 0.1), name = 'W3')
+B3 = tf.Variable(tf.zeros([CH_L3]), name = 'B3') #4 is the number of output channels
 stride3 = 2 #output is 5x5
 Ycnv3 = tf.nn.conv2d(Y2d,W3, strides = [1, stride3, stride3, 1], padding = 'SAME')
 Y3 = tf.nn.relu(Ycnv3 + B3)
 Y3d = tf.nn.dropout(Y3, pkeep)
 
-W4 = tf.Variable(tf.truncated_normal([5*5*CH_L3, 200], stddev = 0.1))
-B4 = tf.Variable(tf.zeros([200]))
+W4 = tf.Variable(tf.truncated_normal([5*5*CH_L3, 200], stddev = 0.1), name = 'W4')
+B4 = tf.Variable(tf.zeros([200]), name = 'B4')
 
-W5 = tf.Variable(tf.truncated_normal([200 ,NUMBER_OF_CLASSES],stddev = 0.1))
-B5 = tf.Variable(tf.zeros([NUMBER_OF_CLASSES])) 
+W5 = tf.Variable(tf.truncated_normal([200 ,NUMBER_OF_CLASSES],stddev = 0.1), name = 'W5')
+B5 = tf.Variable(tf.zeros([NUMBER_OF_CLASSES]), name = 'B5') 
 
 h1 = tf.nn.relu(tf.matmul(tf.reshape(Y3d,[-1,5*5*CH_L3]), W4) + B4)
 h1d = tf.nn.dropout(h1, pkeep)
@@ -139,6 +142,8 @@ Ylogits = tf.matmul(h1d, W5) + B5
 Y  = tf.nn.softmax(Ylogits)
 
 
+# Add ops to save all the variables.
+saver = tf.train.Saver()
 
 
 
@@ -154,13 +159,17 @@ is_correct = tf.equal(tf.argmax(Y,1), tf.argmax(Y_hat,1))
 accuracy = tf.reduce_mean(tf.cast(is_correct,tf.float32))
 
 
-optimizer = tf.train.GradientDescentOptimizer(0.01)
-train_step = optimizer.minimize(cross_entropy) #, global_step = global_step)
+optimizer = tf.train.GradientDescentOptimizer(STARTING_LEARNING_RATE)
+train_step = optimizer.minimize(cross_entropy)#, global_step = global_step)
 
 #Training session
 sess = tf.Session()
 init = tf.global_variables_initializer()
 sess.run(init)
+
+
+print "W1:"
+print str(sess.run(W1))
 
 
 x_batch, y_batch = create_batchs(X_train, Y_labels, BATCH_SIZE)
@@ -196,16 +205,6 @@ for i in range(NUMBER_OF_EPOCHS):
 		train_data = {X : x_batch[k], Y_hat : y_batch[k], pkeep : 0.9}
 		sess.run(train_step, feed_dict = train_data)
 	
-#	j = i%NUMBER_OF_BATCHS
-#	index = ix[j] 
-
-#	train_data = {X : x_batch[index], Y_hat : y_batch[index]}
-
-#train
-#	sess.run(train_step, feed_dict = train_data)
-#		prediction = sess.run(Y , feed_dict = train_data, pkeep = 0.75)
-
-#if k%100 == 0:
 	print '-----------------------'
 	print "EPOCH " + str(i)
  	a,c     = sess.run([accuracy,cross_entropy], feed_dict = {X : x_batch[k], Y_hat : y_batch[k], pkeep : 1.0})
@@ -234,9 +233,10 @@ for i in range(NUMBER_OF_EPOCHS):
 
 print "Saving model..."
 saver = tf.train.Saver()
-saver.save(sess,"my_model")
+saver.save(sess,"model3.ckpt")
 print "Model saved!"
-
+print "W1:"
+print str(sess.run(W1))
 
 my_error_list = sorted(my_error.items())
 my_error_test_list = sorted(my_error_test.items())
@@ -249,9 +249,8 @@ l1_2 = mlines.Line2D([], [], color='red')
 plt.legend([l1_1,l1_2],['Training','Test'], loc = 3)
 plt.xlabel('Epoch')
 plt.ylabel('Error')
-title_fig1 = 'Initial learning rate = ' + str(STARTING_LEARNING_RATE)
+title_fig1 = 'learning rate = ' + str(STARTING_LEARNING_RATE)
 plt.title(title_fig1)
-#plt.legend([l1_1, l1_2], ['Training','Test'])
 
 plt.figure(2)
 
@@ -266,7 +265,7 @@ l2_2 = mlines.Line2D([], [], color='red')
 plt.legend([l2_1,l2_2],['Training','Test'], loc = 3)
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
-title_fig2 = 'Initial learning rate = ' + str(STARTING_LEARNING_RATE)
+title_fig2 = 'learning rate = ' + str(STARTING_LEARNING_RATE)
 plt.title(title_fig2)
 
 
